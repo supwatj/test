@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-door-open"></i> Room Management</h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRoomModal">
+        <i class="bi bi-plus-lg"></i> Add New Room
+    </button>
+</div>
+
+<!-- Room Stats -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <h5>Total Rooms</h5>
+                <h3>{{ all_rooms|length }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <h5>Active Rooms</h5>
+                <h3>{{ rooms|length }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark">
+            <div class="card-body">
+                <h5>Standard Rooms</h5>
+                <h3>{{ rooms|selectattr('room_type', 'equalto', 'Standard')|list|length }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-dark">
+            <div class="card-body">
+                <h5>Deluxe/Suite</h5>
+                <h3>{{ rooms|selectattr('room_type', 'ne', 'Standard')|list|length }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rooms Table -->
+<div class="card">
+    <div class="card-header bg-white">
+        <h5 class="mb-0">All Rooms</h5>
+    </div>
+    <div class="card-body">
+        {% if rooms %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Room Number</th>
+                        <th>Type</th>
+                        <th>Floor</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for room in rooms %}
+                    <tr>
+                        <td>
+                            <strong>{{ room.room_number }}</strong>
+                        </td>
+                        <td>
+                            {% if room.room_type == 'Standard' %}
+                                <span class="badge bg-secondary">{{ room.room_type }}</span>
+                            {% elif room.room_type == 'Deluxe' %}
+                                <span class="badge bg-primary">{{ room.room_type }}</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">{{ room.room_type }}</span>
+                            {% endif %}
+                        </td>
+                        <td>Floor {{ room.floor }}</td>
+                        <td>
+                            {% if room.is_active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-danger">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{{ url_for('check_out', room_id=room.id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-box-arrow-right"></i> Check-out
+                                </a>
+                                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editRoomModal{{ room.id }}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <a href="{{ url_for('delete_room', room_id=room.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to deactivate this room?')">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-inbox fs-1"></i>
+            <p class="mt-2">No rooms added yet</p>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRoomModal">
+                Add First Room
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Room Modal -->
+<div class="modal fade" id="addRoomModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Room</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('add_room') }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Room Number</label>
+                        <input type="text" class="form-control" name="room_number" required placeholder="e.g., 101">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Room Type</label>
+                        <select class="form-select" name="room_type">
+                            <option value="Standard">Standard</option>
+                            <option value="Deluxe">Deluxe</option>
+                            <option value="Suite">Suite</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Floor</label>
+                        <input type="number" class="form-control" name="floor" value="1" min="1">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Room</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Room Modals -->
+{% for room in rooms %}
+<div class="modal fade" id="editRoomModal{{ room.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Room {{ room.room_number }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('edit_room', room_id=room.id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Room Number</label>
+                        <input type="text" class="form-control" name="room_number" value="{{ room.room_number }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Room Type</label>
+                        <select class="form-select" name="room_type">
+                            <option value="Standard" {% if room.room_type == 'Standard' %}selected{% endif %}>Standard</option>
+                            <option value="Deluxe" {% if room.room_type == 'Deluxe' %}selected{% endif %}>Deluxe</option>
+                            <option value="Suite" {% if room.room_type == 'Suite' %}selected{% endif %}>Suite</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Floor</label>
+                        <input type="number" class="form-control" name="floor" value="{{ room.floor }}" min="1">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}

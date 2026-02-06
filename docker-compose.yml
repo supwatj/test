@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: room-management-app
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./room_management/instance:/app/instance
+    environment:
+      - FLASK_APP=room_management/app.py
+      - FLASK_ENV=development
+      - DATABASE_URI=/app/instance/room_management.db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Adminer for database management
+  adminer:
+    image: adminer
+    container_name: room-management-adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - app
+    restart: unless-stopped
+
+networks:
+  default:
+    name: room-management-network

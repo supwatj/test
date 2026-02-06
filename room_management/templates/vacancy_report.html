@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .heatmap-container {
+        overflow-x: auto;
+        margin-bottom: 2rem;
+    }
+    
+    .heatmap-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+    }
+    
+    .heatmap-table th {
+        background: #667eea;
+        color: white;
+        padding: 8px 4px;
+        text-align: center;
+        position: sticky;
+        top: 0;
+    }
+    
+    .heatmap-table td {
+        border: 1px solid #dee2e6;
+        padding: 4px;
+        text-align: center;
+        min-width: 50px;
+    }
+    
+    .day-cell {
+        padding: 8px 4px;
+        font-weight: 500;
+    }
+    
+    .day-vacant { background-color: #28a745; color: white; }
+    .day-occupied { background-color: #dc3545; color: white; }
+    .day-partial { background-color: #ffc107; color: black; }
+    .day-not-vacant { background-color: #fd7e14; color: white; }
+    .day-future { background-color: #e9ecef; color: #6c757d; }
+    
+    .month-header {
+        min-width: 180px;
+    }
+    
+    .legend-item {
+        display: inline-flex;
+        align-items: center;
+        margin-right: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .legend-color {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+        margin-right: 8px;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-bottom: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-bar-chart-line"></i> Vacancy Report</h2>
+
+<!-- Legend -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Legend</h5>
+        <div class="d-flex flex-wrap">
+            <div class="legend-item">
+                <div class="legend-color day-vacant"></div>
+                <span>Vacant (checkout before day {{ vacancy_data.settings.early_checkout_day }})</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color day-partial"></div>
+                <span>Partial (checkout day {{ vacancy_data.settings.early_checkout_day }}-{{ vacancy_data.settings.late_checkout_day - 1 }})</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color day-not-vacant"></div>
+                <span>Not Vacant (checkout day {{ vacancy_data.settings.late_checkout_day }}+)</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bar Chart Section -->
+<div class="card mb-4">
+    <div class="card-header bg-white">
+        <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Monthly Vacancy Summary</h5>
+    </div>
+    <div class="card-body">
+        <div class="chart-container">
+            <canvas id="vacancyBarChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Calendar Heatmap Section -->
+<div class="card">
+    <div class="card-header bg-white">
+        <h5 class="mb-0"><i class="bi bi-grid-3x3"></i> Daily Vacancy Calendar Heatmap</h5>
+    </div>
+    <div class="card-body">
+        <div class="heatmap-container">
+            <table class="heatmap-table">
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        {% for month in vacancy_data.heatmap.months %}
+                        <th class="month-header">{{ month.short_name }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for day in range(1, 32) %}
+                    <tr>
+                        <td class="day-cell">{{ day }}</td>
+                        {% for month in vacancy_data.heatmap.months %}
+                            {% if day <= month.daily_breakdown|length %}
+                            {% set day_data = month.daily_breakdown[day - 1] %}
+                            <td class="day-{{ day_data.status }}">
+                                {{ day_data.vacant }}/{{ vacancy_data.heatmap.total_rooms }}
+                            </td>
+                            {% else %}
+                            <td class="day-future">-</td>
+                            {% endif %}
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Monthly Totals -->
+        <div class="row mt-4">
+            {% for month in vacancy_data.heatmap.months %}
+            <div class="col-md-2 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">{{ month.short_name }}</h6>
+                        <div class="mb-2">
+                            <span class="badge bg-success">{{ month.vacant_days }} Vacant</span>
+                        </div>
+                        <div>
+                            <span class="badge bg-danger">{{ month.occupied_days }} Occupied</span>
+                        </div>
+                        <small class="text-muted mt-2 d-block">
+                            {% if (month.vacant_days + month.occupied_days) > 0 %}
+                            {{ ((month.vacant_days / (month.vacant_days + month.occupied_days)) * 100)|round|int }}% Vacancy
+                            {% else %}
+                            N/A
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script type="application/json" id="vacancyChartData">
+{{ vacancy_data.bar_chart | tojson }}
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('vacancyBarChart').getContext('2d');
+        const chartDataElement = document.getElementById('vacancyChartData');
+        const vacancyData = JSON.parse(chartDataElement.textContent);
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: vacancyData.labels,
+                datasets: [
+                    {
+                        label: 'Vacant Days',
+                        data: vacancyData.vacant,
+                        backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                        borderColor: 'rgba(40, 167, 69, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Occupied Days',
+                        data: vacancyData.occupied,
+                        backgroundColor: 'rgba(220, 53, 69, 0.8)',
+                        borderColor: 'rgba(220, 53, 69, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Vacant vs Occupied Days by Month (6-Month Period)'
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: false,
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Days'
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

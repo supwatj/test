@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-gear"></i> Settings</h2>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Vacancy Criteria Settings -->
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-calendar-check"></i> Vacancy Calculation Criteria</h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('settings') }}" method="POST">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card bg-success text-white">
+                                <div class="card-body">
+                                    <h6><i class="bi bi-check-circle"></i> Vacant Criteria</h6>
+                                    <p class="mb-0">Room counts as <strong>VACANT</strong> if check-out date is before day:</p>
+                                    <div class="mt-2">
+                                        <input type="number" class="form-control form-control-lg text-center" 
+                                               name="early_checkout_day" 
+                                               value="{{ settings.early_checkout_day }}"
+                                               min="1" max="28" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-danger text-white">
+                                <div class="card-body">
+                                    <h6><i class="bi bi-x-circle"></i> Not Vacant Criteria</h6>
+                                    <p class="mb-0">Room counts as <strong>NOT VACANT</strong> if check-out date is day:</p>
+                                    <div class="mt-2">
+                                        <input type="number" class="form-control form-control-lg text-center" 
+                                               name="late_checkout_day" 
+                                               value="{{ settings.late_checkout_day }}"
+                                               min="1" max="31" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Examples -->
+                    <div class="alert alert-info">
+                        <h6><i class="bi bi-info-circle"></i> How It Works</h6>
+                        <ul class="mb-0">
+                            <li>Checkout on <strong>day 1-{{ settings.early_checkout_day - 1 }}</strong> → <span class="text-success fw-bold">VACANT</span></li>
+                            <li>Checkout on <strong>day {{ settings.early_checkout_day }}-{{ settings.late_checkout_day - 1 }}</strong> → <span class="text-warning fw-bold">PARTIAL</span></li>
+                            <li>Checkout on <strong>day {{ settings.late_checkout_day }}-31</strong> → <span class="text-danger fw-bold">NOT VACANT</span></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-save"></i> Save Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Current Settings Display -->
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-list-check"></i> Current Configuration</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-bordered">
+                    <tr>
+                        <th>Setting</th>
+                        <th>Value</th>
+                        <th>Description</th>
+                    </tr>
+                    <tr>
+                        <td>Early Checkout Day</td>
+                        <td><strong>{{ settings.early_checkout_day }}</strong></td>
+                        <td>Days before this = Vacant</td>
+                    </tr>
+                    <tr>
+                        <td>Late Checkout Day</td>
+                        <td><strong>{{ settings.late_checkout_day }}</strong></td>
+                        <td>Days from this onward = Not Vacant</td>
+                    </tr>
+                    <tr>
+                        <td>Partial Period</td>
+                        <td><strong>Day {{ settings.early_checkout_day }} - {{ settings.late_checkout_day - 1 }}</strong></td>
+                        <td>In-between period</td>
+                    </tr>
+                    <tr>
+                        <td>Last Updated</td>
+                        <td colspan="2">{{ settings.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Quick Stats -->
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Quick Stats</h5>
+            </div>
+            <div class="card-body">
+                <a href="{{ url_for('vacancy_report') }}" class="btn btn-outline-primary w-100 mb-2">
+                    <i class="bi bi-graph-up"></i> View Full Report
+                </a>
+                <a href="{{ url_for('rooms') }}" class="btn btn-outline-secondary w-100 mb-2">
+                    <i class="bi bi-door-open"></i> Manage Rooms
+                </a>
+                <a href="{{ url_for('check_in') }}" class="btn btn-outline-success w-100">
+                    <i class="bi bi-box-arrow-in-right"></i> New Check-in
+                </a>
+            </div>
+        </div>
+        
+        <!-- Help -->
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-question-circle"></i> Help</h5>
+            </div>
+            <div class="card-body">
+                <h6>Why are these settings important?</h6>
+                <p class="text-muted">
+                    These settings determine how room vacancies are calculated for your reports.
+                </p>
+                <h6>Example Scenario:</h6>
+                <p class="text-muted">
+                    If a guest checks out on February 3rd, and your early day is 5,
+                    that room counts as vacant for February. If they checkout on February 28th,
+                    it counts as not vacant.
+                </p>
+                <hr>
+                <p class="mb-0 text-muted">
+                    <small>Changes to these settings will immediately affect the vacancy report calculations.</small>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
